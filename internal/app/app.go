@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// App wrapper for grpcapp.App
 type App struct {
 	GRPCServer *grpcapp.App
 }
@@ -18,13 +19,16 @@ func New(
 	dsn string,
 	tokenTTL time.Duration,
 ) *App {
+	// TODO: database setup
 	storage, err := data.New(dsn)
 	if err != nil {
 		panic(err)
 	}
 
+	// TODO: auth service setup
 	authService := auth.New(log, storage, storage, storage, tokenTTL)
 
+	// TODO: grpc app setup
 	grpcApp := grpcapp.New(log, authService, grpcPort)
 
 	return &App{

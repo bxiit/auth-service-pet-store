@@ -14,12 +14,14 @@ import (
 	_ "sso/internal/services/auth"
 )
 
+// App application with grpc
 type App struct {
 	log        *slog.Logger
 	grpcServer *grpc.Server
 	port       int
 }
 
+// New contains auth service
 func New(
 	log *slog.Logger,
 	authService authGrpc.Auth,

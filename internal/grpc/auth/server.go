@@ -12,6 +12,7 @@ import (
 
 var ErrInvalidCredentials = errors.New("invalid credentials")
 
+// Auth interface for (internal/services/auth/Auth) service
 type Auth interface {
 	Login(
 		ctx context.Context,
@@ -27,6 +28,7 @@ type Auth interface {
 	IsAdmin(ctx context.Context, userID int64) (bool, error)
 }
 
+// serverAPI - implementation of Auth interface of (internal/services/auth/Auth) service
 type serverAPI struct {
 	ssov1.UnimplementedAuthServer // Хитрая штука, о ней ниже
 	auth                          Auth
@@ -68,6 +70,7 @@ func (s *serverAPI) Register(
 	if in.Email == "" {
 		return nil, status.Error(codes.InvalidArgument, "email is required")
 	}
+	println("asd")
 
 	if in.Password == "" {
 		return nil, status.Error(codes.InvalidArgument, "password is required")

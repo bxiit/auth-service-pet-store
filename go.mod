@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/brianvoe/gofakeit/v6 v6.28.0
-	github.com/bxiit/protos v0.0.5
+	github.com/bxiit/protos v0.0.7
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
