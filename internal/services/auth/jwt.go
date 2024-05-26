@@ -2,12 +2,12 @@ package auth
 
 import (
 	"github.com/golang-jwt/jwt/v5"
-	"sso/internal/data"
+	"sso/internal/data/models"
 	"time"
 )
 
 // NewToken creates new JWT token for given user and app.
-func NewToken(user data.User, app data.App, duration time.Duration) (string, error) {
+func NewToken(user models.User, app models.App, duration time.Duration) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	claims := token.Claims.(jwt.MapClaims)

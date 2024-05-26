@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/lib/pq"
+	"sso/internal/data/models"
 )
 
 type Storage struct {
@@ -24,12 +25,14 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passHash []byte) (
 		return 0, fail(err)
 	}
 
-	stmt, err := s.db.Prepare("INSERT INTO users(username, email, password_hash, user_role, activated) VALUES($1, $2, $3, $4, $5)")
+	stmt, err := s.db.Prepare("INSERT INTO users(username, email, password_hash, user_role, activated) VALUES($1, $2, $3, $4, $5) RETURNING id")
 	if err != nil {
 		return 0, fail(err)
 	}
 
-	res, err := stmt.ExecContext(ctx, "default username", email, passHash, "user", false)
+	//res, err := stmt.ExecContext(ctx, "default username", email, passHash, "user", false)
+	var id int64
+	err = stmt.QueryRowContext(ctx, "default username", email, passHash, "user", false).Scan(&id)
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
@@ -39,10 +42,6 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passHash []byte) (
 		return 0, fail(err)
 	}
 
-	id, err := res.LastInsertId()
-	if err != nil && id == 0 {
-		return 0, fail(err)
-	}
 	err = tx.Commit()
 	if err != nil {
 		return 0, fail(err)
@@ -52,24 +51,24 @@ func (s *Storage) SaveUser(ctx context.Context, email string, passHash []byte) (
 }
 
 // User returns user by email.
-func (s *Storage) GetUserByEmail(ctx context.Context, email string) (User, error) {
+func (s *Storage) GetUserByEmail(ctx context.Context, email string) (models.User, error) {
 	const op = "storage.sqlite.User"
 
 	stmt, err := s.db.Prepare("SELECT id, username, email, password_hash, user_role, activated FROM users WHERE email = $1")
 	if err != nil {
-		return User{}, fmt.Errorf("%s: %w", op, err)
+		return models.User{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	row := stmt.QueryRowContext(ctx, email)
 
-	var user User
+	var user models.User
 	err = row.Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash.Hash, &user.Role, &user.Activated)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return User{}, fmt.Errorf("%s: %w", op, ErrUserNotFound)
+			return models.User{}, fmt.Errorf("%s: %w", op, ErrUserNotFound)
 		}
 
-		return User{}, fmt.Errorf("%s: %w", op, err)
+		return models.User{}, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return user, nil

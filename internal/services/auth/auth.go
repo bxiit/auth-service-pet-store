@@ -1,5 +1,7 @@
 package auth
 
+// auth implementation
+
 import (
 	"context"
 	"errors"
@@ -7,10 +9,16 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"sso/internal/data"
+	"sso/internal/data/models"
 	"sso/internal/sl"
 	"time"
 )
 
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+)
+
+// Auth service itself
 type Auth struct {
 	log         *slog.Logger
 	usrSaver    UserSaver
@@ -19,28 +27,7 @@ type Auth struct {
 	tokenTTL    time.Duration
 }
 
-var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-)
-
-//go:generate go run github.com/vektra/mockery/v2@v2.28.2 --name=URLSaver
-type UserSaver interface {
-	SaveUser(
-		ctx context.Context,
-		email string,
-		passHash []byte,
-	) (uid int64, err error)
-}
-
-type UserProvider interface {
-	GetUserByEmail(ctx context.Context, email string) (data.User, error)
-	IsAdmin(ctx context.Context, userID int64) (bool, error)
-}
-
-type AppProvider interface {
-	App(ctx context.Context, appID int) (data.App, error)
-}
-
+// New returns Auth service
 func New(
 	log *slog.Logger,
 	userSaver UserSaver,
@@ -55,6 +42,28 @@ func New(
 		appProvider: appProvider,
 		tokenTTL:    tokenTTL,
 	}
+}
+
+// UserSaver interface for service methods
+//
+//go:generate go run github.com/vektra/mockery/v2@v2.28.2 --name=URLSaver
+type UserSaver interface {
+	SaveUser(
+		ctx context.Context,
+		email string,
+		passHash []byte,
+	) (uid int64, err error)
+}
+
+// UserProvider interface for service methods
+type UserProvider interface {
+	GetUserByEmail(ctx context.Context, email string) (models.User, error)
+	IsAdmin(ctx context.Context, userID int64) (bool, error)
+}
+
+// AppProvider interface for service methods
+type AppProvider interface {
+	App(ctx context.Context, appID int) (models.App, error)
 }
 
 func (a *Auth) Login(
@@ -76,7 +85,6 @@ func (a *Auth) Login(
 	if err != nil {
 		if errors.Is(err, data.ErrUserNotFound) {
 			a.log.Warn("user not found", sl.Err(err))
-
 			return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 		}
 

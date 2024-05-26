@@ -37,7 +37,7 @@ func main() {
 	<-stop
 
 	application.GRPCServer.Stop()
-	log.Info("Gracefully stopped")
+	log.Info("Auth service gracefully stopped")
 }
 
 func setupLogger(env string) *slog.Logger {
