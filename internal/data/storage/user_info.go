@@ -1,4 +1,4 @@
-package data
+package storage
 
 import (
 	"context"
@@ -97,19 +97,4 @@ func (s *Storage) IsAdmin(ctx context.Context, userID int64) (bool, error) {
 
 	isRoleAdmin := role == "admin"
 	return isRoleAdmin, nil
-}
-
-func New(dsn string) (*Storage, error) {
-	const op = "data.sqlite.New"
-
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-
-	return &Storage{db: db}, nil
-}
-
-func (s *Storage) Stop(db *sql.DB) error {
-	return s.db.Close()
 }

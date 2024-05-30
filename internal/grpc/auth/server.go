@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"sso/internal/data"
+	"sso/internal/data/storage"
 )
 
 var ErrInvalidCredentials = errors.New("invalid credentials")
@@ -26,6 +26,10 @@ type Auth interface {
 		password string,
 	) (userID int64, err error)
 	IsAdmin(ctx context.Context, userID int64) (bool, error)
+	IsAuthenticated(
+		ctx context.Context,
+		token string,
+	) (bool, error)
 }
 
 // serverAPI - implementation of Auth interface of (internal/services/auth/Auth) service
@@ -34,7 +38,12 @@ type serverAPI struct {
 	auth                          Auth
 }
 
-// for server
+//Cannot use '&serverAPI{auth: auth}'
+//(type *serverAPI) as the type AuthServerType does not implement
+//'AuthServer'need the method: IsAuthenticated(context.Context, *IsAuthenticatedRequest) (*IsAuthenticatedResponse, error)
+//have the method: IsAuthenticated(ctx context.Context, in *ssov1.IsAdminRequest) (*ssov1.IsAdminResponse, error)
+
+// Register - for server
 func Register(gRPCServer *grpc.Server, auth Auth) {
 	ssov1.RegisterAuthServer(gRPCServer, &serverAPI{auth: auth})
 }
@@ -70,7 +79,6 @@ func (s *serverAPI) Register(
 	if in.Email == "" {
 		return nil, status.Error(codes.InvalidArgument, "email is required")
 	}
-	println("asd")
 
 	if in.Password == "" {
 		return nil, status.Error(codes.InvalidArgument, "password is required")
@@ -79,7 +87,7 @@ func (s *serverAPI) Register(
 	uid, err := s.auth.RegisterNewUser(ctx, in.GetEmail(), in.GetPassword())
 	if err != nil {
 		// Ошибку data.ErrUserExists мы создадим ниже
-		if errors.Is(err, data.ErrUserExists) {
+		if errors.Is(err, storage.ErrUserExists) {
 			return nil, status.Error(codes.AlreadyExists, "user already exists")
 		}
 
@@ -99,7 +107,7 @@ func (s *serverAPI) IsAdmin(
 
 	isAdmin, err := s.auth.IsAdmin(ctx, in.GetUserId())
 	if err != nil {
-		if errors.Is(err, data.ErrUserNotFound) {
+		if errors.Is(err, storage.ErrUserNotFound) {
 			return nil, status.Error(codes.NotFound, "user not found")
 		}
 
@@ -107,4 +115,24 @@ func (s *serverAPI) IsAdmin(
 	}
 
 	return &ssov1.IsAdminResponse{IsAdmin: isAdmin}, nil
+}
+
+func (s *serverAPI) IsAuthenticated(
+	ctx context.Context,
+	in *ssov1.IsAuthenticatedRequest,
+) (*ssov1.IsAuthenticatedResponse, error) {
+	if in.Token == "" {
+		return nil, status.Error(codes.InvalidArgument, "token is required")
+	}
+
+	isAuthenticated, err := s.auth.IsAuthenticated(ctx, in.GetToken())
+	if err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			return nil, status.Error(codes.NotFound, "user not found")
+		}
+
+		return nil, status.Error(codes.Internal, "failed to check admin status")
+	}
+
+	return &ssov1.IsAuthenticatedResponse{IsAuthenticated: isAuthenticated}, nil
 }
