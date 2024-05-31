@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS apps;
+DROP TABLE IF EXISTS sso.apps;

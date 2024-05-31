@@ -1,2 +1,2 @@
-ALTER TABLE users
+ALTER TABLE sso.users
 ADD CONSTRAINT PK_UserId PRIMARY KEY (id);

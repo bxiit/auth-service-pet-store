@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net"
 	authGrpc "sso/internal/grpc/auth"
+	"sso/internal/grpc/user_info"
 	_ "sso/internal/services/auth"
 )
 
@@ -25,14 +26,13 @@ type App struct {
 func New(
 	log *slog.Logger,
 	authService authGrpc.Auth,
+	userInfoService user_info.UserInfo,
 	port int,
 ) *App {
 	loggingOpts := []logging.Option{
 		logging.WithLogOnEvents(
-			//logging.StartCall, logging.FinishCall,
 			logging.PayloadReceived, logging.PayloadSent,
 		),
-		// Add any other option (check functions starting with logging.With).
 	}
 
 	recoveryOpts := []recovery.Option{
@@ -49,6 +49,7 @@ func New(
 	))
 
 	authGrpc.Register(gRPCServer, authService)
+	user_info.Register(gRPCServer, userInfoService)
 
 	return &App{
 		log:        log,

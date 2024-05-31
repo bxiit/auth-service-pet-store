@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"sso/internal/data/models"
 	"time"
 )
@@ -18,14 +19,14 @@ type Token struct {
 	Scope     string    `json:"-"`
 }
 
-func (s *Storage) SaveToken(ctx context.Context, tokenPlainText string, userId int64) (bool, error) {
+func (s *AuthStorage) SaveToken(ctx context.Context, tokenPlainText string, userId int64) (bool, error) {
 	const op = "storage.sqlite.IsAdmin"
 	tokenHash := sha256.Sum256([]byte(tokenPlainText))
 	fail := func(e error) error {
 		return fmt.Errorf("%s: %v", op, e)
 	}
 	stmt, err := s.db.Prepare(`
-								INSERT INTO tokens(hash, user_id, expiry) 
+								INSERT INTO sso.tokens(hash, user_id, expiry) 
 								VALUES ($1, $2, $3)
 								`)
 	if err != nil {
@@ -51,19 +52,19 @@ func (s *Storage) SaveToken(ctx context.Context, tokenPlainText string, userId i
 	return true, nil
 }
 
-func (s *Storage) IsAuthenticated(ctx context.Context, tokenPlainText string) (bool, error) {
+func (s *AuthStorage) IsAuthenticated(ctx context.Context, tokenPlainText string) (bool, error) {
 	const op = "storage.sqlite.IsAdmin"
 	tokenHash := sha256.Sum256([]byte(tokenPlainText))
 	stmt, err := s.db.Prepare(`
-								SELECT users.id,
-								       users.username,
-								       users.email,
-								       users.password_hash,
-								       users.user_role,
-								       users.activated
-								           FROM users
-								    INNER JOIN tokens t ON
-								        users.id = t.user_id
+								SELECT sso.users.id,
+								       sso.users.username,
+								       sso.users.email,
+								       sso.users.password_hash,
+								       sso.users.user_role,
+								       sso.users.activated
+								           FROM sso.users
+								    INNER JOIN sso.tokens t ON
+								        sso.users.id = t.user_id
 								         WHERE t.hash = $1
 								           AND t.expiry > $2
 								`)
@@ -100,4 +101,44 @@ func (s *Storage) IsAuthenticated(ctx context.Context, tokenPlainText string) (b
 		}
 	}
 	return true, nil
+}
+
+func (s *AuthStorage) CheckTokens() {
+	for {
+		queryToGetExpiredUserIds := `
+			SELECT u.user_id 
+			FROM sso.tokens u 
+			WHERE expiry < now()`
+
+		rows, err := s.db.Query(queryToGetExpiredUserIds)
+		if err != nil {
+			log.Printf("failed to get expired users")
+			return
+		}
+
+		var userInfos []*models.User
+		for rows.Next() {
+			var userInfo models.User
+			err := rows.Scan(&userInfo.ID)
+			if err != nil {
+				log.Printf("failed to scan expired user")
+				return
+			}
+			userInfos = append(userInfos, &userInfo)
+		}
+
+		queryToDeleteExpiredTokens := `
+				DELETE FROM sso.tokens
+				WHERE user_id = $1`
+
+		for _, ui := range userInfos {
+			_, err := s.db.Exec(queryToDeleteExpiredTokens, ui.ID)
+			if err != nil {
+				log.Printf("failed to delete expired user with id = %d", ui.ID)
+				return
+			}
+		}
+
+		time.Sleep(time.Minute * 20)
+	}
 }

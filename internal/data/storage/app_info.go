@@ -9,10 +9,10 @@ import (
 )
 
 // App returns app by id.
-func (s *Storage) App(ctx context.Context, id int) (models.App, error) {
+func (s *AuthStorage) App(ctx context.Context, id int) (models.App, error) {
 	const op = "storage.sqlite.App"
 
-	stmt, err := s.db.Prepare("SELECT id, name, secret FROM apps WHERE id = $1")
+	stmt, err := s.db.Prepare("SELECT id, name, secret FROM sso.apps WHERE id = $1")
 	if err != nil {
 		return models.App{}, fmt.Errorf("%s: %w", op, err)
 	}

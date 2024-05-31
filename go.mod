@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/brianvoe/gofakeit/v6 v6.28.0
-	github.com/bxiit/protos v0.0.12
+	github.com/bxiit/protos v0.1.0
 	github.com/fatih/color v1.17.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
@@ -19,6 +19,7 @@ require (
 	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 // indirect
+	github.com/jinzhu/copier v0.4.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

@@ -1,13 +1,19 @@
 package auth
 
 import (
+	"errors"
 	"github.com/golang-jwt/jwt/v5"
 	"sso/internal/data/models"
+	"strings"
 	"time"
 )
 
+var (
+	ErrNotValidJwt = errors.New("not valid jwt")
+)
+
 type TokenClaims struct {
-	UID   int64  `json:"uid"`
+	UID   int    `json:"uid"`
 	Email string `json:"email"`
 	AppID int    `json:"app_id"`
 	jwt.MapClaims
@@ -37,6 +43,10 @@ func DecodeToken(appSecret string, tokenString string) (*TokenClaims, error) {
 	})
 
 	if err != nil {
+		switch {
+		case strings.Contains(err.Error(), "token is malformed:"):
+			return nil, ErrNotValidJwt
+		}
 		return nil, err
 	}
 

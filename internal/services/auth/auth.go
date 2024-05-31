@@ -1,7 +1,5 @@
 package auth
 
-// auth implementation
-
 import (
 	"context"
 	"errors"
@@ -18,24 +16,7 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 )
 
-// Auth service itself
-//type Auth struct {
-//	log           *slog.Logger
-//	usrSaver      UserSaver
-//	usrProvider   UserProvider
-//	appProvider   AppProvider
-//	tokenProvider TokenProvider
-//	tokenSaver    TokenSaver
-//	tokenTTL      time.Duration
-//}
-
-type Auth struct {
-	log         *slog.Logger
-	ssoProvider SsoProvider
-	tokenTTL    time.Duration
-}
-
-type SsoProvider interface {
+type AuthProvider interface {
 	SaveUser(
 		ctx context.Context,
 		email string,
@@ -48,68 +29,23 @@ type SsoProvider interface {
 	IsAuthenticated(ctx context.Context, token string) (bool, error)
 }
 
-// New returns Auth service
-//func New(
-//	log *slog.Logger,
-//	userSaver UserSaver,
-//	userProvider UserProvider,
-//	appProvider AppProvider,
-//	tokenProvider TokenProvider,
-//	tokenSaver TokenSaver,
-//	tokenTTL time.Duration,
-//) *Auth {
-//	return &Auth{
-//		usrSaver:      userSaver,
-//		usrProvider:   userProvider,
-//		log:           log,
-//		appProvider:   appProvider,
-//		tokenTTL:      tokenTTL,
-//		tokenProvider: tokenProvider,
-//		tokenSaver:    tokenSaver,
-//	}
-//}
+type Auth struct {
+	log          *slog.Logger
+	authProvider AuthProvider
+	tokenTTL     time.Duration
+}
 
 func New(
 	log *slog.Logger,
 	tokenTTL time.Duration,
-	ssoProvider SsoProvider,
+	ssoProvider AuthProvider,
 ) *Auth {
 	return &Auth{
-		log:         log,
-		tokenTTL:    tokenTTL,
-		ssoProvider: ssoProvider,
+		log:          log,
+		tokenTTL:     tokenTTL,
+		authProvider: ssoProvider,
 	}
 }
-
-// UserSaver interface for service methods
-//
-//go:generate go run github.com/vektra/mockery/v2@v2.28.2 --name=URLSaver
-//type UserSaver interface {
-//	SaveUser(
-//		ctx context.Context,
-//		email string,
-//		passHash []byte,
-//	) (uid int64, err error)
-//}
-//
-//// UserProvider interface for service methods
-//type UserProvider interface {
-//	GetUserByEmail(ctx context.Context, email string) (models.User, error)
-//	IsAdmin(ctx context.Context, userID int64) (bool, error)
-//}
-//
-//type TokenProvider interface {
-//	IsAuthenticated(ctx context.Context, token string) (bool, error)
-//}
-//
-//type TokenSaver interface {
-//	SaveToken(ctx context.Context, tokenPlainText string, userId int64) (bool, error)
-//}
-//
-//// AppProvider interface for service methods
-//type AppProvider interface {
-//	App(ctx context.Context, appID int) (models.App, error)
-//}
 
 func (a *Auth) Login(
 	ctx context.Context,
@@ -126,7 +62,7 @@ func (a *Auth) Login(
 
 	log.Info("attempting to login user")
 
-	user, err := a.ssoProvider.GetUserByEmail(ctx, email)
+	user, err := a.authProvider.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserNotFound) {
 			a.log.Warn("user not found", sl.Err(err))
@@ -144,7 +80,7 @@ func (a *Auth) Login(
 		return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 	}
 
-	app, err := a.ssoProvider.App(ctx, appID)
+	app, err := a.authProvider.App(ctx, appID)
 	if err != nil {
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
@@ -158,7 +94,7 @@ func (a *Auth) Login(
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
-	isSaved, err := a.ssoProvider.SaveToken(ctx, token, user.ID)
+	isSaved, err := a.authProvider.SaveToken(ctx, token, user.ID)
 	if err != nil || !isSaved {
 		a.log.Warn("token not saved", sl.Err(err))
 		return "", fmt.Errorf("%s: %w", op, err)
@@ -184,7 +120,7 @@ func (a *Auth) RegisterNewUser(ctx context.Context, email string, pass string) (
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	id, err := a.ssoProvider.SaveUser(ctx, email, passHash)
+	id, err := a.authProvider.SaveUser(ctx, email, passHash)
 	if err != nil {
 		log.Error("failed to save user", sl.Err(err))
 
@@ -204,7 +140,7 @@ func (a *Auth) IsAdmin(ctx context.Context, userID int64) (bool, error) {
 
 	log.Info("checking if user is admin")
 
-	isAdmin, err := a.ssoProvider.IsAdmin(ctx, userID)
+	isAdmin, err := a.authProvider.IsAdmin(ctx, userID)
 	if err != nil {
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
@@ -224,7 +160,7 @@ func (a *Auth) IsAuthenticated(ctx context.Context, token string) (bool, error) 
 
 	log.Info("checking if user is authenticated")
 
-	isAdmin, err := a.ssoProvider.IsAuthenticated(ctx, token)
+	isAdmin, err := a.authProvider.IsAuthenticated(ctx, token)
 	if err != nil {
 		return false, fmt.Errorf("%s: %w", op, err)
 	}

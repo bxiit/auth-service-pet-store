@@ -13,17 +13,28 @@ var (
 	ErrTokenNotSaved = errors.New("token not saved")
 )
 
-func New(dsn string) (*Storage, error) {
-	const op = "data.sqlite.New"
+func NewAuthStorage(dsn string) (*AuthStorage, error) {
+	const op = "data.storage.NewAuthStorage"
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return &Storage{db: db}, nil
+	return &AuthStorage{db: db}, nil
 }
 
-func (s *Storage) Stop(db *sql.DB) error {
+func NewUserInfoStorage(dsn string) (*UserInfoStorage, error) {
+	const op = "data.storage.NewUserInfoStorage"
+
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return &UserInfoStorage{db: db}, nil
+}
+
+func (s *AuthStorage) Stop(db *sql.DB) error {
 	return s.db.Close()
 }

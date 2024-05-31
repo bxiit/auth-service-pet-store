@@ -38,11 +38,6 @@ type serverAPI struct {
 	auth                          Auth
 }
 
-//Cannot use '&serverAPI{auth: auth}'
-//(type *serverAPI) as the type AuthServerType does not implement
-//'AuthServer'need the method: IsAuthenticated(context.Context, *IsAuthenticatedRequest) (*IsAuthenticatedResponse, error)
-//have the method: IsAuthenticated(ctx context.Context, in *ssov1.IsAdminRequest) (*ssov1.IsAdminResponse, error)
-
 // Register - for server
 func Register(gRPCServer *grpc.Server, auth Auth) {
 	ssov1.RegisterAuthServer(gRPCServer, &serverAPI{auth: auth})
@@ -79,7 +74,6 @@ func (s *serverAPI) Register(
 	if in.Email == "" {
 		return nil, status.Error(codes.InvalidArgument, "email is required")
 	}
-
 	if in.Password == "" {
 		return nil, status.Error(codes.InvalidArgument, "password is required")
 	}
